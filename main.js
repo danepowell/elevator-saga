@@ -3,6 +3,7 @@
     // Handle elevators.
     _.each(elevators, function(elevator) {
       elevator.on("idle", function() {
+        // TODO: Look for more passengers in the direction I'm traveling.
         var nextFloor = Math.floor(floors.length / 2);
         elevator.goToFloor(nextFloor);
       });
@@ -10,6 +11,9 @@
         elevator.goToFloor(floorNum);
       });
       elevator.on("passing_floor", function(floorNum, direction) {
+        // TODO: Set direction indicator.
+        // TODO: Check if someone on this floor is heading my direction and add to queue.
+        // TODO: Reorder queue according to direction I'm traveling.
         // Should we stop at this floor?
         // First, see if someone in the elevator wants to get off.
         var pressedFloors = elevator.getPressedFloors();
@@ -26,6 +30,7 @@
 
     // Handle floors.
     _.each(floors, function(floor) {
+      // TODO: Don't do anything here? Unless an elevator is idle.
       floor.on("up_button_pressed", function() {
         _.each(elevators, function(elevator) {
           elevator.goToFloor(floor.floorNum());
