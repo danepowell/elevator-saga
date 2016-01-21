@@ -25,41 +25,90 @@
 
     function sortQueue() {
       _.each(elevators, function(elevator) {
-        // If no direction set, just go to the floor.
-        // Go through each floor and see if it's requested and in the correct direction.
-        /**         var floorNum = elevator.currentFloor();
-         if (elevator.goingUpIndicator()) {
-         var prograde = elevator.destinationQueue.filter(function(x) {return x >= floorNum;});
-         var retrograde = elevator.destinationQueue.filter(function(x) {return x < floorNum;});
-         prograde.sort(sortNumber);
-         retrograde.sort(sortNumber);
-         retrograde.reverse();
-         if (prograde.length == 0) {
-         elevator.goingUpIndicator(false);
-         elevator.goingDownIndicator(true);
-         }
-         }
-      else {
-        var prograde = elevator.destinationQueue.filter(function(x) {return x <= floorNum;});
-        var retrograde = elevator.destinationQueue.filter(function(x) {return x > floorNum;});
-        prograde.sort(sortNumber);
-        prograde.reverse();
-        retrograde.sort(sortNumber);
-        if (prograde.length == 0) {
+        queue = [];
+        var pressedFloors = elevator.getPressedFloors();
+        var currentFloor = elevator.currentFloor();
+
+        // Scan for prograde passengers heading prograde.
+        _.each(floors, function(floor) {
+          // Scan for disembarking passengers
+          if (pressedFloors.indexOf(floor.floorNum) > -1) {
+            queue.push(floor.floorNum);
+          }
+
+          // Scan for embarking passengers.
+          var goingUp = elevator.goingUpIndicator() && floor.floorNum > currentFloor && floor.buttonStates.up;
+          var goingDown = elevator.goingDownIndicator() && floor.floorNum < currentFloor && floor.buttonStates.down;
+          if (goingUp || goingDown) {
+            queue.push(floor.floorNum);
+          }
+        });
+
+        // Flip queue if going down.
+        if (elevator.goingDownIndicator()) {
+          queue.reverse();
+        }
+
+        // If no passengers, scan for prograde passengers heading retrograde.
+        if (queue.length == 0) {
+          _.each(floors, function(floor) {
+            var goingUp = elevator.goingUpIndicator() && floor.floorNum > currentFloor && floor.buttonStates.down;
+            var goingDown = elevator.goingDownIndicator() && floor.floorNum < currentFloor && floor.buttonStates.up;
+            if (goingUp || goingDown) {
+              queue.push(floor.floorNum);
+            }
+          });
+
+          // Flip queue if going up.
+          if (elevator.goingUpIndicator()) {
+            queue.reverse();
+          }
+
+          // We're arriving at a retrograde floor.
+          if (Math.abs(queue[0] - currentFloor) == 1) {
+            flipIndicators();
+          }
+        }
+
+        // If still no passengers, look for retrograde passengers heading prograde.
+        if (queue.length == 0) {
+          _.each(floors, function(floor) {
+            var goingUp = elevator.goingUpIndicator() && floor.floorNum < currentFloor && floor.buttonStates.up;
+            var goingDown = elevator.goingDownIndicator() && floor.floorNum > currentFloor && floor.buttonStates.down;
+            if (goingUp || goingDown) {
+              queue.push(floor.floorNum);
+            }
+          });
+
+          // Flip queue if going down.
+          if (elevator.goingDownIndicator()) {
+            queue.reverse();
+          }
+
+          flipIndicators();
+        }
+
+        if (queue.length == 0) {
+          // Guess we are truly idle.
           elevator.goingUpIndicator(true);
           elevator.goingDownIndicator(false);
         }
-      }
-      elevator.destinationQueue = prograde.concat(retrograde);
-      elevator.checkDestinationQueue();
-        **/
-      }
-            }
 
-    function sortNumber(a,b) {
-      return a - b;
+        elevator.destinationQueue = queue;
+        elevator.checkDestinationQueue();
+
+        function flipIndicators() {
+          if (elevator.goingUpIndicator()) {
+            elevator.goingUpIndicator(false);
+            elevator.goingDownIndicator(true);
+          }
+          else {
+            elevator.goingUpIndicator(true);
+            elevator.goingDownIndicator(false);
+          }
+        }
+      });
     }
-
   },
   update: function(dt, elevators, floors) {
     // We normally don't need to do anything here
