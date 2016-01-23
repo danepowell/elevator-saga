@@ -25,100 +25,34 @@
 
     function sortQueue() {
       _.each(elevators, function(elevator) {
-        queue = [];
+        var floorWeights = [];
         var pressedFloors = elevator.getPressedFloors();
         var currentFloor = elevator.currentFloor();
-
-        // Fix initialization.
-        if (elevator.goingUpIndicator() && elevator.goingDownIndicator()) {
-          elevator.goingDownIndicator(false);
-        }
-        
-        // Scan for prograde passengers heading prograde.
+        elevator.destinationQueue = [];
         _.each(floors, function(floor) {
-          // Scan for disembarking passengers
+          var pressedWeight = 0;
           if (pressedFloors.indexOf(floor.floorNum()) > -1) {
-            queue.push(floor.floorNum());
+            pressedWeight = 1;
           }
 
-          if (elevator.loadFactor() == 1) {
-            elevator.destinationQueue = queue;
-            elevator.checkDestinationQueue();
-            return;
+          var loadWeight = 1 - ((1 - pressedWeight) * elevator.loadFactor());
+
+          var calledWeight = 0;
+          if (floor.buttonStates.up || floor.buttonStates.down) {
+            calledWeight = 1;
           }
-          
-          // Scan for embarking passengers.
-          var goingUp = elevator.goingUpIndicator() && floor.floorNum() >= currentFloor && floor.buttonStates.up;
-          var goingDown = elevator.goingDownIndicator() && floor.floorNum() <= currentFloor && floor.buttonStates.down;
-          if (goingUp || goingDown) {
-            queue.push(floor.floorNum());
-          }
+
+          var distanceWeight = 1 - (Math.abs(currentFloor - floor.floorNum()) / floors.length);
+
+          var floorWeight = (pressedWeight + calledWeight + distanceWeight) * loadWeight;
+          floorWeights.push(floorWeight);
         });
 
-        // Flip queue if going down.
-        if (elevator.goingDownIndicator()) {
-          queue.reverse();
-        }
+        var bestFloor = floorWeights.indexOf(Math.max.apply(Math, floorWeights));
 
-        // If no passengers, scan for prograde passengers heading retrograde.
-        if (queue.length == 0) {
-          _.each(floors, function(floor) {
-            var goingUp = elevator.goingUpIndicator() && floor.floorNum() >= currentFloor && floor.buttonStates.down;
-            var goingDown = elevator.goingDownIndicator() && floor.floorNum() <= currentFloor && floor.buttonStates.up;
-            if (goingUp || goingDown) {
-              queue.push(floor.floorNum());
-            }
-          });
-
-          // Flip queue if going up.
-          if (elevator.goingUpIndicator()) {
-            queue.reverse();
-          }
-
-          // Check if we're arriving at a floor and reverse direction.
-          if (queue.length > 0) {
-            if (queue[0] == currentFloor) {
-              flipIndicators();
-            }
-          }
-        }
-
-        // If still no passengers, look for retrograde passengers heading prograde.
-        if (queue.length == 0) {
-          _.each(floors, function(floor) {
-            var goingUp = elevator.goingUpIndicator() && floor.floorNum() <= currentFloor && floor.buttonStates.up;
-            var goingDown = elevator.goingDownIndicator() && floor.floorNum() >= currentFloor && floor.buttonStates.down;
-            if (goingUp || goingDown) {
-              queue.push(floor.floorNum());
-            }
-          });
-
-          // Flip queue if going down.
-          if (elevator.goingDownIndicator()) {
-            queue.reverse();
-          }
-
-          flipIndicators();
-        }
-
-        if (queue.length == 0) {
-          // Guess we are truly idle.
-          elevator.goingUpIndicator(true);
-          elevator.goingDownIndicator(false);
-        }
-
-        elevator.destinationQueue = queue;
-        elevator.checkDestinationQueue();
-
-        function flipIndicators() {
-          if (elevator.goingUpIndicator()) {
-            elevator.goingUpIndicator(false);
-            elevator.goingDownIndicator(true);
-          }
-          else {
-            elevator.goingUpIndicator(true);
-            elevator.goingDownIndicator(false);
-          }
+        if (bestFloor > -1) {
+          elevator.destinationQueue.push(bestFloor);
+          elevator.checkDestinationQueue();
         }
       });
     }
